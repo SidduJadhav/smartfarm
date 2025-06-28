@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "gcc src/backend/dp_scheduler.c -o src/backend/dp_scheduler.out && gcc src/backend/brute_force_scheduler.c -o src/backend/brute_force_scheduler.out && gcc src/backend/greedy_scheduler.c -o src/backend/greedy_scheduler.out",
+    "postbuild": "echo Building .c files... && gcc src/backend/dp_scheduler.c -o src/backend/dp_scheduler.out && gcc src/backend/brute_force_scheduler.c -o src/backend/brute_force_scheduler.out && gcc src/backend/greedy_scheduler.c -o src/backend/greedy_scheduler.out && ls src/backend",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node src/backend/server.js"
