@@ -1,4 +1,4 @@
-// Brute Force Scheduler - converted from C
+// Brute Force Scheduler with Single Priority Formula
 export function bruteForceScheduler(input) {
   try {
     const data = parseInput(input)
@@ -7,7 +7,7 @@ export function bruteForceScheduler(input) {
     }
 
     scheduleIrrigation(data)
-    return generateOutput(data, "GreedyNoTime")
+    return generateOutput(data, "Enhanced Greedy")
   } catch (error) {
     return { error: "Scheduler failed", details: error.message }
   }
@@ -51,6 +51,7 @@ function parseInput(input) {
       allocated: 0,
       scheduled: false,
       originalIndex: i,
+      priority: 0,
     }
 
     if (fieldData.moisture < 0 || fieldData.moisture > 100) {
@@ -70,17 +71,44 @@ function parseInput(input) {
   return data.fieldCount > 0 ? data : null
 }
 
+function calculatePriorities(data) {
+  console.log("🧮 Calculating field priorities using standard formula")
+
+  for (let i = 0; i < data.fieldCount; i++) {
+    const field = data.fields[i]
+
+    // Standard priority formula
+    const moistureDeficit = 100 - field.moisture
+    const waterEfficiency = 1000 / field.waterNeeded
+    field.priority = moistureDeficit * (1 + waterEfficiency / 1000)
+
+    console.log(
+      `📊 ${field.name}: moisture=${field.moisture}%, deficit=${moistureDeficit}, ` +
+        `waterNeeded=${field.waterNeeded}L, efficiency=${waterEfficiency.toFixed(2)}, ` +
+        `priority=${field.priority.toFixed(2)}`,
+    )
+  }
+}
+
 function scheduleIrrigation(data) {
   if (!data || data.fieldCount <= 0 || data.totalWater < 0) {
     return
   }
 
-  // Sort by priority: lowest moisture, highest water needed
+  // Calculate priorities
+  calculatePriorities(data)
+
+  // Sort by priority (highest first), then by water needed (highest first) as tiebreaker
   data.fields.sort((a, b) => {
-    if (a.moisture !== b.moisture) {
-      return a.moisture - b.moisture
+    if (Math.abs(a.priority - b.priority) < 0.01) {
+      return b.waterNeeded - a.waterNeeded
     }
-    return b.waterNeeded - a.waterNeeded
+    return b.priority - a.priority
+  })
+
+  console.log("🔄 Field priority order:")
+  data.fields.forEach((field, index) => {
+    console.log(`  ${index + 1}. ${field.name} (priority: ${field.priority.toFixed(2)})`)
   })
 
   data.totalWaterUsed = 0
@@ -92,28 +120,35 @@ function scheduleIrrigation(data) {
     data.fields[i].allocated = 0
   }
 
-  // Simple greedy allocation
+  // Greedy allocation based on priority
   for (let i = 0; i < data.fieldCount; i++) {
-    if (data.remainingWater >= data.fields[i].waterNeeded) {
-      data.fields[i].allocated = data.fields[i].waterNeeded
-      data.fields[i].scheduled = true
-      data.remainingWater -= data.fields[i].waterNeeded
-      data.totalWaterUsed += data.fields[i].waterNeeded
+    const field = data.fields[i]
+
+    if (data.remainingWater >= field.waterNeeded) {
+      field.allocated = field.waterNeeded
+      field.scheduled = true
+      data.remainingWater -= field.waterNeeded
+      data.totalWaterUsed += field.waterNeeded
+
+      console.log(`✅ Scheduled ${field.name}: ${field.waterNeeded}L (full need)`)
     } else if (data.remainingWater > 0) {
-      const minAllocation = Math.floor(data.fields[i].waterNeeded / 10)
+      const minAllocation = Math.floor(field.waterNeeded / 10)
       if (data.remainingWater >= minAllocation) {
-        data.fields[i].allocated = data.remainingWater
-        data.fields[i].scheduled = true
+        field.allocated = data.remainingWater
+        field.scheduled = true
         data.totalWaterUsed += data.remainingWater
         data.remainingWater = 0
+
+        console.log(`✅ Scheduled ${field.name}: ${field.allocated}L (partial)`)
       }
       break
     } else {
+      console.log(`❌ No water remaining for ${field.name}`)
       break
     }
   }
 
-  // Restore field order if needed
+  // Restore original field order for output
   data.fields.sort((a, b) => a.originalIndex - b.originalIndex)
 }
 
@@ -129,6 +164,7 @@ function generateOutput(data, algorithm) {
       moisture: field.moisture,
       need: field.waterNeeded,
       allocated: field.allocated,
+      priority: Math.round(field.priority * 100) / 100,
     }))
 
   return {
