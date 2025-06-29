@@ -1,6 +1,10 @@
 import { FieldInput, AlgorithmType } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+// Dynamically select base URL based on environment
+const BASE_URL =
+  import.meta.env.MODE === 'development'
+    ? 'http://localhost:5000'
+    : 'https://smartfarm-gta7.onrender.com';
 
 export const scheduleIrrigation = async (
   fields: FieldInput[],
@@ -23,7 +27,7 @@ export const scheduleIrrigation = async (
       })),
     };
 
-    const response = await fetch(`${API_BASE_URL}/api/schedule`, {
+    const response = await fetch(`${BASE_URL}/api/schedule`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -31,19 +35,16 @@ export const scheduleIrrigation = async (
       body: JSON.stringify(inputData)
     });
 
-    const contentType = response.headers.get('content-type');
+    const contentType = response.headers.get('content-type') || '';
 
     if (!response.ok) {
-      if (contentType?.includes('application/json')) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to schedule irrigation');
-      } else {
-        const errorText = await response.text();
-        throw new Error(errorText || `Server error: ${response.status}`);
-      }
+      const errorMessage = contentType.includes('application/json')
+        ? (await response.json()).error || 'Failed to schedule irrigation'
+        : await response.text();
+      throw new Error(errorMessage);
     }
 
-    if (!contentType?.includes('application/json')) {
+    if (!contentType.includes('application/json')) {
       throw new Error('Server responded with non-JSON content');
     }
 
